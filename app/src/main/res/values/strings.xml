@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">Math Runner</string>
+    <string name="close">Close</string>
+    <string name="levels_screen_description">Math Runner levels screen</string>
+    <string name="levels_easy_description">Easy difficulty, currently active</string>
+    <string name="levels_medium_description">Medium difficulty, currently locked</string>
+    <string name="levels_hard_description">Hard difficulty, currently locked</string>
+    <string name="levels_easy_title">EASY — ACTIVE</string>
+    <string name="levels_easy_message">Number range 1 – 50.\nProgress 50 / 100.\nIncreases by 5 each stage.</string>
+    <string name="levels_easy_confirm">READY — CONTINUE</string>
+    <string name="levels_medium_title">MEDIUM — LOCKED</string>
+    <string name="levels_medium_locked_message">Unlocks when Easy reaches 1 – 100.</string>
+    <string name="levels_hard_title">HARD — LOCKED</string>
+    <string name="levels_hard_locked_message">Unlocks later.</string>
+    <string name="levels_back_description">Back to main menu</string>
 </resources>

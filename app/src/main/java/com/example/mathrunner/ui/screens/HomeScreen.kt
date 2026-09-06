@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -48,11 +49,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mathrunner.R
+import com.example.mathrunner.ui.components.LoopingVideoBackground
 import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
-    onBackToSplash: () -> Unit = {}
+    onBackToSplash: () -> Unit = {},
+    onStartGame: () -> Unit = {}
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var activeModal by remember { mutableStateOf<String?>(null) }
@@ -65,12 +68,33 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. High Quality Main Menu Artwork Background
+        // Fallback static background image
         Image(
             painter = painterResource(id = R.drawable.main_menu_bg),
-            contentDescription = "Math Runner Main Menu Background",
+            contentDescription = "Math Runner Fallback Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
+        )
+
+        // 1. Moving Video Animation Background: Boy Running Toward Cloud Castle
+        LoopingVideoBackground(
+            videoResId = R.raw.boy_running_toward_cloud_castle,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Subtle gradient overlay for readability of UI overlays
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.28f)
+                        )
+                    )
+                )
         )
 
         AnimatedVisibility(
@@ -176,14 +200,14 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Big Glossy PLAY Button Asset
+                    // Big Glossy PLAY Button Asset -> Launches animated gameplay screen!
                     InteractiveImageButton(
                         drawableId = R.drawable.btn_play,
                         contentDescription = "Play Button",
                         modifier = Modifier
                             .fillMaxWidth(0.92f)
                             .height(76.dp),
-                        onClick = { activeModal = "PLAY" }
+                        onClick = { onStartGame() }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -223,7 +247,6 @@ fun HomeScreen(
                 title = {
                     Text(
                         text = when (modal) {
-                            "PLAY" -> "🏃 START MATH RUNNER!"
                             "LEVELS" -> "🗺️ SELECT LEVEL"
                             "ACHIEVEMENTS" -> "🏆 ACHIEVEMENTS"
                             "STATISTICS" -> "📊 PLAYER STATISTICS"
@@ -245,22 +268,6 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         when (modal) {
-                            "PLAY" -> {
-                                Text(
-                                    text = "Ready to run Level 25?\nSolve equations, collect coins & dodge gates!",
-                                    color = Color(0xFFBAE6FD),
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 14.sp
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(
-                                    onClick = { activeModal = null },
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E))
-                                ) {
-                                    Text("▶ RUN NOW!", fontWeight = FontWeight.Bold)
-                                }
-                            }
                             "LEVELS" -> {
                                 Text(
                                     text = "Current Stage: World 1 (Level 25/80)",
@@ -279,7 +286,11 @@ fun HomeScreen(
                                                 .padding(4.dp)
                                                 .size(36.dp)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .background(if (lvlNum == 25) Color(0xFFF59E0B) else Color(0xFF0284C7)),
+                                                .background(if (lvlNum == 25) Color(0xFFF59E0B) else Color(0xFF0284C7))
+                                                .clickable {
+                                                    activeModal = null
+                                                    onStartGame()
+                                                },
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(

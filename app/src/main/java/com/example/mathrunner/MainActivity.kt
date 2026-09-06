@@ -14,9 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.mathrunner.ui.screens.GameplayScreen
 import com.example.mathrunner.ui.screens.HomeScreen
+import com.example.mathrunner.ui.screens.LevelsScreen
 import com.example.mathrunner.ui.screens.SplashScreen
 import com.example.mathrunner.ui.theme.MathRunnerTheme
+
+private enum class AppScreen {
+    Splash,
+    Home,
+    Levels,
+    Game
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,25 +41,43 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainContent() {
-    var isSplashScreenVisible by remember { mutableStateOf(true) }
+    var currentScreen by remember { mutableStateOf(AppScreen.Splash) }
 
     Crossfade(
-        targetState = isSplashScreenVisible,
-        animationSpec = tween(durationMillis = 500),
-        label = "SplashToHomeCrossfade",
+        targetState = currentScreen,
+        animationSpec = tween(durationMillis = 400),
+        label = "AppScreenCrossfade",
         modifier = Modifier.fillMaxSize()
-    ) { showSplash ->
-        if (showSplash) {
-            SplashScreen(
+    ) { screen ->
+        when (screen) {
+            AppScreen.Splash -> SplashScreen(
                 onSplashScreenFinished = {
-                    isSplashScreenVisible = false
+                    currentScreen = AppScreen.Home
                 },
-                autoNavigate = true // Auto navigate after 6 seconds loading duration
+                autoNavigate = true
             )
-        } else {
-            HomeScreen(
+
+            AppScreen.Home -> HomeScreen(
                 onBackToSplash = {
-                    isSplashScreenVisible = true
+                    currentScreen = AppScreen.Splash
+                },
+                onStartGame = {
+                    currentScreen = AppScreen.Game
+                }
+            )
+
+            AppScreen.Levels -> LevelsScreen(
+                onBackToHome = {
+                    currentScreen = AppScreen.Home
+                },
+                onEasySelected = {
+                    currentScreen = AppScreen.Game
+                }
+            )
+
+            AppScreen.Game -> GameplayScreen(
+                onExitGame = {
+                    currentScreen = AppScreen.Home
                 }
             )
         }
@@ -70,5 +97,21 @@ fun SplashScreenPreview() {
 fun HomeScreenPreview() {
     MathRunnerTheme {
         HomeScreen()
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun LevelsScreenPreview() {
+    MathRunnerTheme {
+        LevelsScreen(onBackToHome = {})
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun GameplayScreenPreview() {
+    MathRunnerTheme {
+        GameplayScreen(onExitGame = {})
     }
 }
