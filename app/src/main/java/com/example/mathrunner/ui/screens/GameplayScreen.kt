@@ -1,7 +1,6 @@
 package com.example.mathrunner.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -16,14 +15,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -66,8 +63,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -86,15 +81,6 @@ data class VideoRunnerQuestion(
     val equation: String,
     val options: List<Int>,
     val correctIndex: Int
-)
-
-// Floating particle burst effect
-data class FloatingEffect(
-    val id: Long,
-    val text: String,
-    val color: Color,
-    val x: Float,
-    val y: Float
 )
 
 // Helper to generate engaging math questions
@@ -149,12 +135,14 @@ fun GameplayScreen(
     var coinsCollected by remember { mutableIntStateOf(24) }
     var combo by remember { mutableIntStateOf(1) }
     var lives by remember { mutableIntStateOf(3) }
-    var distanceProgress by remember { mutableFloatStateOf(0.15f) } // 0.0 to 1.0
+    var distanceProgress by remember { mutableFloatStateOf(0.10f) } // 0.0 to 1.0
     var questionsAnswered by remember { mutableIntStateOf(0) }
     val totalQuestionsForLevel = 5
 
-    // Video Speed State (Speeds up on correct answers / swipe drag)
-    var videoSpeed by remember { mutableFloatStateOf(1.0f) }
+    // State: Is user encountering a question?
+    // When true: THE RUNNER STOPS RUNNING (video pauses), Question pops up to be answered.
+    // When false: THE RUNNER IS RUNNING (video plays), user can swipe to steer & collect coins.
+    var isAnsweringQuestion by remember { mutableStateOf(false) }
 
     // Touch & Swipe Interactive Offset
     var fingerDragX by remember { mutableFloatStateOf(0f) }
@@ -175,10 +163,31 @@ fun GameplayScreen(
     var isGameOver by remember { mutableStateOf(false) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
 
-    // Particle Burst effects
-    val floatingEffects = remember { mutableStateListOf<FloatingEffect>() }
+    // Runner Timer Loop: Runs forward for ~3.5 seconds, then encounters a Question Gate & STOPS!
+    LaunchedEffect(isAnsweringQuestion, isPaused, isLevelComplete, isGameOver) {
+        if (!isAnsweringQuestion && !isPaused && !isLevelComplete && !isGameOver) {
+            // Running phase
+            val runDurationMs = 3500L
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < runDurationMs) {
+                delay(100)
+                if (isPaused || isLevelComplete || isGameOver) break
+                // Advance distance slowly while running
+                distanceProgress = (distanceProgress + 0.005f).coerceAtMost(0.99f)
+            }
 
-    // Gradually return finger drag to center
+            if (!isPaused && !isLevelComplete && !isGameOver) {
+                // STOP THE RUNNER! Question Encounter!
+                currentQuestion = generateVideoRunnerQuestion()
+                selectedOptionIndex = null
+                isQuestionCorrect = null
+                feedbackMessage = null
+                isAnsweringQuestion = true
+            }
+        }
+    }
+
+    // Reset finger drag to center
     LaunchedEffect(fingerDragX) {
         if (fingerDragX != 0f) {
             delay(150)
@@ -199,31 +208,19 @@ fun GameplayScreen(
             coinsCollected += 5
             combo++
             questionsAnswered++
-            videoSpeed = 1.35f
             distanceProgress = (distanceProgress + (1.0f / totalQuestionsForLevel)).coerceAtMost(1.0f)
-            feedbackMessage = "PERFECT! +$earnedScore ⭐"
-
-            // Spawn floating text particle
-            floatingEffects.add(
-                FloatingEffect(
-                    id = System.currentTimeMillis(),
-                    text = "+$earnedScore ⭐",
-                    color = Color(0xFFFDE047),
-                    x = 0f,
-                    y = -40f
-                )
-            )
+            feedbackMessage = "✨ BENAR! +$earnedScore ⭐"
 
             coroutineScope.launch {
-                delay(700)
-                videoSpeed = 1.0f
+                delay(800)
                 if (distanceProgress >= 1.0f || questionsAnswered >= totalQuestionsForLevel) {
                     isLevelComplete = true
                 } else {
+                    // Resume running! Character moves again!
                     selectedOptionIndex = null
                     isQuestionCorrect = null
                     feedbackMessage = null
-                    currentQuestion = generateVideoRunnerQuestion()
+                    isAnsweringQuestion = false
                 }
             }
         } else {
@@ -231,17 +228,17 @@ fun GameplayScreen(
             isQuestionCorrect = false
             combo = 1
             lives = (lives - 1).coerceAtLeast(0)
-            feedbackMessage = "WRONG! -1 ❤️"
+            feedbackMessage = "SALAH! -1 ❤️"
 
             coroutineScope.launch {
-                delay(800)
+                delay(900)
                 if (lives <= 0) {
                     isGameOver = true
                 } else {
+                    // Try again or resume
                     selectedOptionIndex = null
                     isQuestionCorrect = null
                     feedbackMessage = null
-                    currentQuestion = generateVideoRunnerQuestion()
                 }
             }
         }
@@ -256,21 +253,24 @@ fun GameplayScreen(
                     onDrag = { change, dragAmount ->
                         change.consume()
                         fingerDragX += dragAmount.x * 0.4f
-                        // Add coin reward on energetic swipe!
-                        if (Random.nextInt(12) == 0) {
-                            coinsCollected++
-                            score += 10
+                        if (!isAnsweringQuestion) {
+                            if (Random.nextInt(10) == 0) {
+                                coinsCollected++
+                                score += 10
+                            }
                         }
                     }
                 )
             }
     ) {
-        val screenWidth = maxWidth
-        val screenHeight = maxHeight
+        // Video playing condition:
+        // Video runs ONLY when user is NOT answering a question, NOT paused, NOT complete!
+        // When question pops up, isAnsweringQuestion = true -> Video STOPS!
+        val isVideoPlaying = !isAnsweringQuestion && !isPaused && !isLevelComplete && !isGameOver
 
         // ==========================================
         // 1. MOVING VIDEO BACKGROUND: boy_collecting_coins_on_path.mp4
-        // (Responds directly to finger drag, speed, and pause state)
+        // (Automatically stops when question appears)
         // ==========================================
         Box(
             modifier = Modifier
@@ -280,13 +280,12 @@ fun GameplayScreen(
         ) {
             LoopingVideoBackground(
                 videoResId = R.raw.boy_collecting_coins_on_path,
-                isPlaying = !isPaused && !isLevelComplete && !isGameOver,
-                speed = videoSpeed,
+                isPlaying = isVideoPlaying,
                 modifier = Modifier.fillMaxSize()
             )
         }
 
-        // Ambient gradient overlay for HUD legibility
+        // Ambient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -295,7 +294,7 @@ fun GameplayScreen(
                         colors = listOf(
                             Color.Black.copy(alpha = 0.30f),
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.40f)
+                            Color.Black.copy(alpha = if (isAnsweringQuestion) 0.50f else 0.35f)
                         )
                     )
                 )
@@ -303,7 +302,6 @@ fun GameplayScreen(
 
         // ==========================================
         // 2. TOP HUD: LEVEL, SCORE, LIVES, PROGRESS & PAUSE
-        // (Matches tampilan-main.png exact header layout)
         // ==========================================
         Column(
             modifier = Modifier
@@ -402,7 +400,7 @@ fun GameplayScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Running Distance Progress Bar with Flag (Matches tampilan-main.png)
+            // Running Distance Progress Bar with Flag
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -451,7 +449,36 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 3. FLOATING FEEDBACK MESSAGE & PARTICLES
+        // 3. RUNNING STATUS INDICATOR (While runner is moving)
+        // ==========================================
+        if (!isAnsweringQuestion && !isPaused && !isLevelComplete) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .shadow(10.dp, RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF0284C7).copy(alpha = 0.85f))
+                    .border(2.dp, Color(0xFF7DD3FC), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(text = "🏃💨 ", fontSize = 18.sp)
+                    Text(
+                        text = "Karakter sedang berlari & mengumpulkan koin...",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
+        // ==========================================
+        // 4. FLOATING FEEDBACK MESSAGE
         // ==========================================
         feedbackMessage?.let { msg ->
             Box(
@@ -476,124 +503,136 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 4. BOTTOM SECTION: MATH QUESTION CARD & 4 ANSWER PILLS
-        // (Matches tampilan-main.png exact layout)
+        // 5. QUESTION ENCOUNTER MODAL / PANEL
+        // (Appears when runner stops to answer question)
         // ==========================================
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        AnimatedVisibility(
+            visible = isAnsweringQuestion && !isPaused && !isLevelComplete,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { 200 }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { 200 }),
+            modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            // Hint for finger gestures
-            Text(
-                text = "👉 Usap layar untuk menggerakkan dan jawab soal di bawah 👈",
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(
-                    shadow = Shadow(Color.Black.copy(alpha = 0.8f), Offset(1f, 1f), 3f)
-                ),
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-
-            // Glossy Math Question Box
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(86.dp)
-                    .shadow(12.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color(0xFFE0F2FE), Color(0xFFBAE6FD), Color(0xFF93C5FD))
-                        )
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // STOPPED NOTICE BANNER
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFEF4444).copy(alpha = 0.9f))
+                        .border(1.5.dp, Color.White, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "🛑 BERHENTI! Jawab soal untuk lanjut lari 🛑",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp
                     )
-                    .border(3.dp, Color.White, RoundedCornerShape(24.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                // Decorative math symbols in corners
-                Text(
-                    text = "➕",
-                    fontSize = 18.sp,
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Glossy Math Question Box
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 10.dp, top = 6.dp)
-                )
-                Text(
-                    text = "➖",
-                    fontSize = 18.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 10.dp, bottom = 6.dp)
-                )
-                Text(
-                    text = "✖️",
-                    fontSize = 18.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 10.dp, bottom = 6.dp)
-                )
+                        .fillMaxWidth()
+                        .height(88.dp)
+                        .shadow(14.dp, RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFFE0F2FE), Color(0xFFBAE6FD), Color(0xFF93C5FD))
+                            )
+                        )
+                        .border(3.dp, Color.White, RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Decorative math symbols in corners
+                    Text(
+                        text = "➕",
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 10.dp, top = 6.dp)
+                    )
+                    Text(
+                        text = "➖",
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 10.dp, bottom = 6.dp)
+                    )
+                    Text(
+                        text = "✖️",
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 10.dp, bottom = 6.dp)
+                    )
 
-                // The prominent equation: e.g. 7 × 6 = ?
-                Text(
-                    text = currentQuestion.equation,
-                    color = Color(0xFF0F172A),
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-            }
+                    // The prominent equation: e.g. 7 × 6 = ?
+                    Text(
+                        text = currentQuestion.equation,
+                        color = Color(0xFF0F172A),
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-            // 4 Answer Option Pill Buttons (2x2 Grid matching tampilan-main.png)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AnswerOptionPill(
-                    optionValue = currentQuestion.options[0],
-                    isChosen = selectedOptionIndex == 0,
-                    isCorrect = isQuestionCorrect,
-                    modifier = Modifier.weight(1f),
-                    onClick = { handleAnswer(0) }
-                )
-                AnswerOptionPill(
-                    optionValue = currentQuestion.options[1],
-                    isChosen = selectedOptionIndex == 1,
-                    isCorrect = isQuestionCorrect,
-                    modifier = Modifier.weight(1f),
-                    onClick = { handleAnswer(1) }
-                )
-            }
+                // 4 Answer Option Pill Buttons (2x2 Grid matching tampilan-main.png)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AnswerOptionPill(
+                        optionValue = currentQuestion.options[0],
+                        isChosen = selectedOptionIndex == 0,
+                        isCorrect = isQuestionCorrect,
+                        modifier = Modifier.weight(1f),
+                        onClick = { handleAnswer(0) }
+                    )
+                    AnswerOptionPill(
+                        optionValue = currentQuestion.options[1],
+                        isChosen = selectedOptionIndex == 1,
+                        isCorrect = isQuestionCorrect,
+                        modifier = Modifier.weight(1f),
+                        onClick = { handleAnswer(1) }
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AnswerOptionPill(
-                    optionValue = currentQuestion.options[2],
-                    isChosen = selectedOptionIndex == 2,
-                    isCorrect = isQuestionCorrect,
-                    modifier = Modifier.weight(1f),
-                    onClick = { handleAnswer(2) }
-                )
-                AnswerOptionPill(
-                    optionValue = currentQuestion.options[3],
-                    isChosen = selectedOptionIndex == 3,
-                    isCorrect = isQuestionCorrect,
-                    modifier = Modifier.weight(1f),
-                    onClick = { handleAnswer(3) }
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AnswerOptionPill(
+                        optionValue = currentQuestion.options[2],
+                        isChosen = selectedOptionIndex == 2,
+                        isCorrect = isQuestionCorrect,
+                        modifier = Modifier.weight(1f),
+                        onClick = { handleAnswer(2) }
+                    )
+                    AnswerOptionPill(
+                        optionValue = currentQuestion.options[3],
+                        isChosen = selectedOptionIndex == 3,
+                        isCorrect = isQuestionCorrect,
+                        modifier = Modifier.weight(1f),
+                        onClick = { handleAnswer(3) }
+                    )
+                }
             }
         }
 
         // ==========================================
-        // 5. PAUSED MODAL (Matches paused.png)
+        // 6. PAUSED MODAL (Matches paused.png)
         // ==========================================
         if (isPaused) {
             Box(
@@ -620,7 +659,6 @@ fun GameplayScreen(
                             .padding(22.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // PAUSED Title Banner
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -643,7 +681,6 @@ fun GameplayScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Stats Summary Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
@@ -660,7 +697,6 @@ fun GameplayScreen(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // RESUME Button (Green Pill)
                         ModalActionButton(
                             text = "▶  RESUME",
                             gradientColors = listOf(Color(0xFF22C55E), Color(0xFF16A34A)),
@@ -669,25 +705,23 @@ fun GameplayScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // RESTART Button (Yellow/Orange Pill)
                         ModalActionButton(
                             text = "🔄  RESTART",
                             gradientColors = listOf(Color(0xFFF59E0B), Color(0xFFD97706)),
                             onClick = {
                                 score = 1250
                                 lives = 3
-                                distanceProgress = 0.15f
+                                distanceProgress = 0.10f
                                 questionsAnswered = 0
+                                isAnsweringQuestion = false
                                 selectedOptionIndex = null
                                 isQuestionCorrect = null
-                                currentQuestion = generateVideoRunnerQuestion()
                                 isPaused = false
                             }
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // EXIT TO LEVELS Button (Red Pill)
                         ModalActionButton(
                             text = "🏠  EXIT TO LEVELS",
                             gradientColors = listOf(Color(0xFFEF4444), Color(0xFFDC2626)),
@@ -699,7 +733,7 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 6. LEVEL COMPLETE MODAL (Matches setelah-main.png)
+        // 7. LEVEL COMPLETE MODAL (Matches setelah-main.png)
         // ==========================================
         if (isLevelComplete) {
             Box(
@@ -724,7 +758,6 @@ fun GameplayScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Level Complete Header Banner
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -745,7 +778,6 @@ fun GameplayScreen(
                             )
                         }
 
-                        // Score & Best Score Cards Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -764,7 +796,6 @@ fun GameplayScreen(
                             )
                         }
 
-                        // Level Statistics Row (Correct, Accuracy, Distance, Bonus)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -780,19 +811,18 @@ fun GameplayScreen(
                             StatItem(title = "Bonus", value = "+$coinsCollected", icon = "🪙")
                         }
 
-                        // Action Buttons: NEXT LEVEL, REPLAY, LEVELS
                         Column(modifier = Modifier.fillMaxWidth()) {
                             ModalActionButton(
                                 text = "▶  NEXT LEVEL",
                                 gradientColors = listOf(Color(0xFF22C55E), Color(0xFF16A34A)),
                                 onClick = {
                                     score += 500
-                                    distanceProgress = 0.1f
+                                    distanceProgress = 0.10f
                                     questionsAnswered = 0
                                     selectedOptionIndex = null
                                     isQuestionCorrect = null
+                                    isAnsweringQuestion = false
                                     isLevelComplete = false
-                                    currentQuestion = generateVideoRunnerQuestion()
                                 }
                             )
 
@@ -808,12 +838,12 @@ fun GameplayScreen(
                                         gradientColors = listOf(Color(0xFFF59E0B), Color(0xFFD97706)),
                                         onClick = {
                                             score = 1250
-                                            distanceProgress = 0.15f
+                                            distanceProgress = 0.10f
                                             questionsAnswered = 0
                                             selectedOptionIndex = null
                                             isQuestionCorrect = null
+                                            isAnsweringQuestion = false
                                             isLevelComplete = false
-                                            currentQuestion = generateVideoRunnerQuestion()
                                         }
                                     )
                                 }
