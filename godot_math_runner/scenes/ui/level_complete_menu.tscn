@@ -1,0 +1,127 @@
+[gd_scene load_steps=3 format=3 uid="uid://lvl_complete_01"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_complete_menu.gd" id="1_comp"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal_gold"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.2, 0.7, 0.95, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 20
+
+[node name="LevelCompleteMenu" type="Control"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_comp")
+
+[node name="Dimmer" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ModalPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(800, 720)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal_gold")
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/ModalPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/ModalPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Title" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.45, 0.8, 1)
+theme_override_font_sizes/font_size = 48
+text = "🎉 LEVEL COMPLETE! 🎉"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="CenterContainer/ModalPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 16
+columns = 2
+
+[node name="Lbl1" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 28
+text = "Current Score:"
+
+[node name="CurrentScoreLabel" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1, 0.5, 0.85, 1)
+theme_override_font_sizes/font_size = 32
+text = "2,350"
+
+[node name="Lbl2" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 28
+text = "Best Score:"
+
+[node name="BestScoreLabel" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.65, 0.1, 1)
+theme_override_font_sizes/font_size = 32
+text = "2,350"
+
+[node name="Lbl3" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 28
+text = "Accuracy:"
+
+[node name="AccuracyLabel" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 32
+text = "100%"
+
+[node name="NextLevelButton" type="Button" parent="CenterContainer/ModalPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "▶  NEXT LEVEL"
+
+[node name="ReplayButton" type="Button" parent="CenterContainer/ModalPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 75)
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "🔄  REPLAY"

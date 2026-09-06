@@ -1,0 +1,90 @@
+[gd_scene load_steps=3 format=3 uid="uid://game_over_01"]
+
+[ext_resource type="Script" path="res://scripts/ui/game_over_menu.gd" id="1_over"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal_red"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.9, 0.25, 0.25, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 20
+
+[node name="GameOverMenu" type="Control"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_over")
+
+[node name="Dimmer" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ModalPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(750, 580)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal_red")
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/ModalPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/ModalPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 52
+text = "💥 GAME OVER 💥"
+horizontal_alignment = 1
+
+[node name="FinalScoreLabel" type="Label" parent="CenterContainer/ModalPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1, 0.15, 0.3, 1)
+theme_override_font_sizes/font_size = 36
+text = "Final Score: 1,250"
+horizontal_alignment = 1
+
+[node name="TryAgainButton" type="Button" parent="CenterContainer/ModalPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 85)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "🔄  TRY AGAIN"
+
+[node name="MenuButton" type="Button" parent="CenterContainer/ModalPanel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 85)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "🏠  MAIN MENU"

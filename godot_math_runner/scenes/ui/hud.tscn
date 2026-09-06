@@ -1,0 +1,284 @@
+[gd_scene load_steps=5 format=3 uid="uid://hud_scene_01"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pill"]
+bg_color = Color(0.01, 0.45, 0.75, 0.9)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.45, 0.8, 1, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qbox"]
+bg_color = Color(0.85, 0.95, 1, 0.95)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+bg_color = Color(0.01, 0.5, 0.85, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.5, 0.85, 1, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+shadow_size = 6
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="TopHUD" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 200.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="LevelPanel" type="PanelContainer" parent="TopHUD"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 40.0
+offset_right = 240.0
+offset_bottom = 110.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill")
+
+[node name="LevelLabel" type="Label" parent="TopHUD/LevelPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "LEVEL 25"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScorePanel" type="PanelContainer" parent="TopHUD"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -160.0
+offset_top = 40.0
+offset_right = 160.0
+offset_bottom = 110.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TopHUD/ScorePanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="Trophy" type="Label" parent="TopHUD/ScorePanel/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "🏆 "
+
+[node name="VBox" type="VBoxContainer" parent="TopHUD/ScorePanel/HBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="TopHUD/ScorePanel/HBoxContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.25, 1)
+theme_override_font_sizes/font_size = 28
+text = "1,250"
+horizontal_alignment = 1
+
+[node name="PauseButton" type="Button" parent="TopHUD"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -120.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = 110.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "⏸"
+
+[node name="ProgressContainer" type="Control" parent="TopHUD"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 130.0
+offset_bottom = 180.0
+grow_horizontal = 2
+
+[node name="ProgressBar" type="ProgressBar" parent="TopHUD/ProgressContainer"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 40.0
+offset_top = -14.0
+offset_right = -40.0
+offset_bottom = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+value = 25.0
+show_percentage = false
+
+[node name="RunnerIcon" type="Label" parent="TopHUD/ProgressContainer"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 80.0
+offset_top = -5.0
+offset_right = 120.0
+offset_bottom = 35.0
+theme_override_font_sizes/font_size = 24
+text = "🏃"
+
+[node name="Flag" type="Label" parent="TopHUD/ProgressContainer"]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -90.0
+offset_top = -20.0
+offset_right = -40.0
+offset_bottom = 20.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_font_sizes/font_size = 24
+text = "🏁"
+
+[node name="StoppedBanner" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -560.0
+offset_right = 320.0
+offset_bottom = -500.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_pill")
+
+[node name="Label" type="Label" parent="StoppedBanner"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "🛑 BERHENTI! Jawab soal untuk lanjut lari 🛑"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="QuestionContainer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -480.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="QuestionBox" type="PanelContainer" parent="QuestionContainer"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 40.0
+offset_top = 20.0
+offset_right = -40.0
+offset_bottom = 160.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_qbox")
+
+[node name="EquationLabel" type="Label" parent="QuestionContainer/QuestionBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.1, 0.25, 1)
+theme_override_font_sizes/font_size = 56
+text = "7 × 6 = ?"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AnswerGrid" type="GridContainer" parent="QuestionContainer"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -300.0
+offset_right = -40.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 20
+columns = 2
+
+[node name="AnswerBtn0" type="Button" parent="QuestionContainer/AnswerGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "36"
+
+[node name="AnswerBtn1" type="Button" parent="QuestionContainer/AnswerGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "42"
+
+[node name="AnswerBtn2" type="Button" parent="QuestionContainer/AnswerGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "48"
+
+[node name="AnswerBtn3" type="Button" parent="QuestionContainer/AnswerGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+text = "56"

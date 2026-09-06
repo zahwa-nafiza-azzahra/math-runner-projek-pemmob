@@ -1,0 +1,30 @@
+[gd_scene load_steps=8 format=3 uid="uid://main_scene_01"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://bg_scene_01" path="res://scenes/background.tscn" id="2_bg"]
+[ext_resource type="PackedScene" uid="uid://player_scene_01" path="res://scenes/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" uid="uid://hud_scene_01" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" uid="uid://pause_menu_01" path="res://scenes/ui/pause_menu.tscn" id="5_pause"]
+[ext_resource type="PackedScene" uid="uid://game_over_01" path="res://scenes/ui/game_over_menu.tscn" id="6_over"]
+[ext_resource type="PackedScene" uid="uid://lvl_complete_01" path="res://scenes/ui/level_complete_menu.tscn" id="7_comp"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Background" parent="." instance=ExtResource("2_bg")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+position = Vector2(540, 1350)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" parent="CanvasLayer" instance=ExtResource("4_hud")]
+
+[node name="PauseMenu" parent="CanvasLayer" instance=ExtResource("5_pause")]
+visible = false
+
+[node name="GameOverMenu" parent="CanvasLayer" instance=ExtResource("6_over")]
+visible = false
+
+[node name="LevelCompleteMenu" parent="CanvasLayer" instance=ExtResource("7_comp")]
+visible = false

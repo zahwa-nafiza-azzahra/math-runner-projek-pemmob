@@ -1,0 +1,35 @@
+[gd_scene load_steps=4 format=3 uid="uid://answer_obj_01"]
+
+[ext_resource type="Script" path="res://scripts/answer_object.gd" id="1_ans"]
+[ext_resource type="Texture2D" path="res://assets/sprites/platforms/math_answer_platform.png" id="2_plat"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_plat"]
+size = Vector2(180, 80)
+
+[node name="AnswerObject" type="Area2D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_ans")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_plat")
+
+[node name="Label" type="Label" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -60.0
+offset_top = -25.0
+offset_right = 60.0
+offset_bottom = 25.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 36
+text = "42"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_plat")
