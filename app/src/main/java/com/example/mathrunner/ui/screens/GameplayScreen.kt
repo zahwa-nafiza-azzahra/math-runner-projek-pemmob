@@ -62,13 +62,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -79,38 +75,40 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mathrunner.R
+import com.example.mathrunner.ui.components.LoopingVideoBackground
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.sin
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 // Represents a math question
-data class RunnerMathQuestion(
+data class VideoRunnerQuestion(
     val equation: String,
     val options: List<Int>,
     val correctIndex: Int
 )
 
-// Represents dynamic coins on the track
-data class TrackCoin(
+// Floating particle burst effect
+data class FloatingEffect(
     val id: Long,
-    val lane: Int, // -1: Left, 0: Mid, 1: Right
-    var yPos: Float, // 0.0 (far top) to 1.0 (player position)
-    var collected: Boolean = false
+    val text: String,
+    val color: Color,
+    val x: Float,
+    val y: Float
 )
 
-// Generate balanced arithmetic questions
-fun createRunnerQuestion(): RunnerMathQuestion {
+// Helper to generate engaging math questions
+fun generateVideoRunnerQuestion(): VideoRunnerQuestion {
     val operations = listOf("+", "-", "×")
     val op = operations[Random.nextInt(operations.size)]
     val (num1, num2, answer) = when (op) {
         "+" -> {
-            val a = Random.nextInt(5, 30)
+            val a = Random.nextInt(5, 35)
             val b = Random.nextInt(5, 30)
             Triple(a, b, a + b)
         }
         "-" -> {
-            val a = Random.nextInt(15, 50)
+            val a = Random.nextInt(15, 60)
             val b = Random.nextInt(3, a)
             Triple(a, b, a - b)
         }
@@ -136,7 +134,7 @@ fun createRunnerQuestion(): RunnerMathQuestion {
         add(correctPos, answer)
     }
 
-    return RunnerMathQuestion("$num1 $op $num2 = ?", finalOptions, correctPos)
+    return VideoRunnerQuestion("$num1 $op $num2 = ?", finalOptions, correctPos)
 }
 
 @Composable
@@ -155,92 +153,40 @@ fun GameplayScreen(
     var questionsAnswered by remember { mutableIntStateOf(0) }
     val totalQuestionsForLevel = 5
 
+    // Video Speed State (Speeds up on correct answers / swipe drag)
+    var videoSpeed by remember { mutableFloatStateOf(1.0f) }
+
+    // Touch & Swipe Interactive Offset
+    var fingerDragX by remember { mutableFloatStateOf(0f) }
+    val animatedTiltX by animateFloatAsState(
+        targetValue = fingerDragX.coerceIn(-60f, 60f),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow),
+        label = "TiltX"
+    )
+
     // Question State
-    var currentQuestion by remember { mutableStateOf(createRunnerQuestion()) }
+    var currentQuestion by remember { mutableStateOf(generateVideoRunnerQuestion()) }
     var selectedOptionIndex by remember { mutableStateOf<Int?>(null) }
     var isQuestionCorrect by remember { mutableStateOf<Boolean?>(null) }
 
-    // Game State
+    // Game Modals State
     var isPaused by remember { mutableStateOf(false) }
     var isLevelComplete by remember { mutableStateOf(false) }
     var isGameOver by remember { mutableStateOf(false) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
 
-    // Runner character position & animation
-    // Target lane: -1 (Left), 0 (Middle), 1 (Right)
-    var currentLane by remember { mutableIntStateOf(0) }
-    val animatedLaneX by animateFloatAsState(
-        targetValue = currentLane.toFloat(),
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
-        label = "LaneX"
-    )
+    // Particle Burst effects
+    val floatingEffects = remember { mutableStateListOf<FloatingEffect>() }
 
-    // Running bounce & jump animation
-    val infiniteTransition = rememberInfiniteTransition(label = "RunBob")
-    val runBobbing by infiniteTransition.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(260, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "Bob"
-    )
-
-    // Jump state for leaping over obstacles / answering correctly
-    var isJumping by remember { mutableStateOf(false) }
-    val jumpAnim = remember { Animatable(0f) }
-
-    // Coins on track
-    val coinsList = remember {
-        mutableStateListOf(
-            TrackCoin(1L, -1, 0.25f),
-            TrackCoin(2L, 0, 0.45f),
-            TrackCoin(3L, 0, 0.65f),
-            TrackCoin(4L, 1, 0.35f),
-            TrackCoin(5L, 1, 0.75f)
-        )
-    }
-
-    // Road scroll effect
-    var roadScrollOffset by remember { mutableFloatStateOf(0f) }
-
-    // Main game loop (runs while not paused and not complete)
-    LaunchedEffect(isPaused, isLevelComplete, isGameOver) {
-        while (!isPaused && !isLevelComplete && !isGameOver) {
-            delay(30)
-            roadScrollOffset = (roadScrollOffset + 0.035f) % 1.0f
-
-            // Move coins down towards player
-            for (i in coinsList.indices) {
-                val coin = coinsList[i]
-                if (!coin.collected) {
-                    val nextY = coin.yPos + 0.025f
-                    if (nextY >= 0.85f && nextY <= 1.05f) {
-                        // Check collision with player's lane
-                        if (coin.lane == currentLane) {
-                            coinsList[i] = coin.copy(collected = true)
-                            coinsCollected += 1
-                            score += 10 * combo
-                        }
-                    }
-                    if (nextY > 1.2f) {
-                        // Respawn at top with random lane
-                        coinsList[i] = TrackCoin(
-                            id = System.currentTimeMillis() + i,
-                            lane = Random.nextInt(-1, 2),
-                            yPos = 0.1f,
-                            collected = false
-                        )
-                    } else {
-                        coinsList[i] = coin.copy(yPos = nextY)
-                    }
-                }
-            }
+    // Gradually return finger drag to center
+    LaunchedEffect(fingerDragX) {
+        if (fingerDragX != 0f) {
+            delay(150)
+            fingerDragX = 0f
         }
     }
 
-    // Function when user submits / taps an answer
+    // Function to handle answer selection
     fun handleAnswer(index: Int) {
         if (selectedOptionIndex != null || isLevelComplete || isGameOver) return
         selectedOptionIndex = index
@@ -248,38 +194,36 @@ fun GameplayScreen(
         if (index == currentQuestion.correctIndex) {
             // Correct Answer!
             isQuestionCorrect = true
-            score += 150 * combo
+            val earnedScore = 150 * combo
+            score += earnedScore
             coinsCollected += 5
             combo++
             questionsAnswered++
+            videoSpeed = 1.35f
             distanceProgress = (distanceProgress + (1.0f / totalQuestionsForLevel)).coerceAtMost(1.0f)
-            feedbackMessage = "PERFECT! +${150 * combo} ⭐"
+            feedbackMessage = "PERFECT! +$earnedScore ⭐"
 
-            // Trigger character leap animation!
-            coroutineScope.launch {
-                isJumping = true
-                jumpAnim.animateTo(
-                    targetValue = -70f,
-                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+            // Spawn floating text particle
+            floatingEffects.add(
+                FloatingEffect(
+                    id = System.currentTimeMillis(),
+                    text = "+$earnedScore ⭐",
+                    color = Color(0xFFFDE047),
+                    x = 0f,
+                    y = -40f
                 )
-                jumpAnim.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(200, easing = FastOutSlowInEasing)
-                )
-                isJumping = false
-            }
+            )
 
-            // Check if level completed
             coroutineScope.launch {
-                delay(800)
+                delay(700)
+                videoSpeed = 1.0f
                 if (distanceProgress >= 1.0f || questionsAnswered >= totalQuestionsForLevel) {
                     isLevelComplete = true
                 } else {
-                    // Next question
                     selectedOptionIndex = null
                     isQuestionCorrect = null
                     feedbackMessage = null
-                    currentQuestion = createRunnerQuestion()
+                    currentQuestion = generateVideoRunnerQuestion()
                 }
             }
         } else {
@@ -290,14 +234,14 @@ fun GameplayScreen(
             feedbackMessage = "WRONG! -1 ❤️"
 
             coroutineScope.launch {
-                delay(900)
+                delay(800)
                 if (lives <= 0) {
                     isGameOver = true
                 } else {
                     selectedOptionIndex = null
                     isQuestionCorrect = null
                     feedbackMessage = null
-                    currentQuestion = createRunnerQuestion()
+                    currentQuestion = generateVideoRunnerQuestion()
                 }
             }
         }
@@ -307,16 +251,15 @@ fun GameplayScreen(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // Swipe & Drag Gesture to steer the runner left, middle, right
-                detectHorizontalDragGestures(
-                    onHorizontalDrag = { change, dragAmount ->
+                // Interactive Finger Drag & Swipes to move runner and collect coins
+                detectDragGestures(
+                    onDrag = { change, dragAmount ->
                         change.consume()
-                        if (dragAmount > 20) {
-                            // Swiped right
-                            if (currentLane < 1) currentLane++
-                        } else if (dragAmount < -20) {
-                            // Swiped left
-                            if (currentLane > -1) currentLane--
+                        fingerDragX += dragAmount.x * 0.4f
+                        // Add coin reward on energetic swipe!
+                        if (Random.nextInt(12) == 0) {
+                            coinsCollected++
+                            score += 10
                         }
                     }
                 )
@@ -326,219 +269,53 @@ fun GameplayScreen(
         val screenHeight = maxHeight
 
         // ==========================================
-        // 1. 3D PERSPECTIVE RUNNER TRACK & SCENERY CANVAS
+        // 1. MOVING VIDEO BACKGROUND: boy_collecting_coins_on_path.mp4
+        // (Responds directly to finger drag, speed, and pause state)
         // ==========================================
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-
-            // Sky gradient (Vibrant blue with clouds)
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF38BDF8),
-                        Color(0xFF7DD3FC),
-                        Color(0xFFBAE6FD),
-                        Color(0xFFE0F2FE)
-                    ),
-                    startY = 0f,
-                    endY = h * 0.45f
-                ),
-                size = Size(w, h * 0.45f)
-            )
-
-            // Horizon Clouds / Floating Islands backdrop
-            drawCircle(
-                color = Color.White.copy(alpha = 0.8f),
-                radius = w * 0.35f,
-                center = Offset(w * 0.2f, h * 0.22f)
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.8f),
-                radius = w * 0.45f,
-                center = Offset(w * 0.8f, h * 0.20f)
-            )
-
-            // Side scenery (Lush green cliffs)
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF15803D), Color(0xFF166534)),
-                    startY = h * 0.35f,
-                    endY = h
-                ),
-                topLeft = Offset(0f, h * 0.35f),
-                size = Size(w, h * 0.65f)
-            )
-
-            // 3D Perspective Road Track
-            // Top vanishing point (x: center, y: h * 0.35)
-            val topRoadW = w * 0.22f
-            val bottomRoadW = w * 0.92f
-            val roadTopY = h * 0.35f
-            val roadBottomY = h
-
-            val roadPath = Path().apply {
-                moveTo((w - topRoadW) / 2f, roadTopY)
-                lineTo((w + topRoadW) / 2f, roadTopY)
-                lineTo((w + bottomRoadW) / 2f, roadBottomY)
-                lineTo((w - bottomRoadW) / 2f, roadBottomY)
-                close()
-            }
-
-            // Road surface (Warm cobblestone yellow-orange)
-            drawPath(
-                path = roadPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFD97706),
-                        Color(0xFFF59E0B),
-                        Color(0xFFFBBF24),
-                        Color(0xFFFDE68A)
-                    ),
-                    startY = roadTopY,
-                    endY = roadBottomY
-                )
-            )
-
-            // Road borders (Wooden / stone curbs)
-            val leftCurb = Path().apply {
-                moveTo((w - topRoadW) / 2f - 8f, roadTopY)
-                lineTo((w - topRoadW) / 2f, roadTopY)
-                lineTo((w - bottomRoadW) / 2f, roadBottomY)
-                lineTo((w - bottomRoadW) / 2f - 30f, roadBottomY)
-                close()
-            }
-            drawPath(leftCurb, Color(0xFF92400E))
-
-            val rightCurb = Path().apply {
-                moveTo((w + topRoadW) / 2f, roadTopY)
-                lineTo((w + topRoadW) / 2f + 8f, roadTopY)
-                lineTo((w + bottomRoadW) / 2f + 30f, roadBottomY)
-                lineTo((w + bottomRoadW) / 2f, roadBottomY)
-                close()
-            }
-            drawPath(rightCurb, Color(0xFF92400E))
-
-            // Dynamic Road Stripes (Horizontal tiles scrolling forward)
-            val numStripes = 8
-            for (i in 0 until numStripes) {
-                val t = (i.toFloat() / numStripes + roadScrollOffset / numStripes) % 1.0f
-                // Perspective exponential curve
-                val progress = t * t
-                val curY = roadTopY + progress * (roadBottomY - roadTopY)
-                val curW = topRoadW + progress * (bottomRoadW - topRoadW)
-                val leftX = (w - curW) / 2f
-
-                drawLine(
-                    color = Color(0xFFB45309).copy(alpha = 0.45f),
-                    start = Offset(leftX, curY),
-                    end = Offset(leftX + curW, curY),
-                    strokeWidth = 3f + progress * 6f
-                )
-            }
-
-            // Lane Dividers (Dashed lines between Left, Mid, Right)
-            for (laneDiv in listOf(-0.33f, 0.33f)) {
-                val startX = w / 2f + (topRoadW / 2f) * laneDiv
-                val endX = w / 2f + (bottomRoadW / 2f) * laneDiv
-                drawLine(
-                    color = Color.White.copy(alpha = 0.5f),
-                    start = Offset(startX, roadTopY),
-                    end = Offset(endX, roadBottomY),
-                    strokeWidth = 3.5f
-                )
-            }
-
-            // Draw Floating Track Coins
-            coinsList.filter { !it.collected }.forEach { coin ->
-                val progress = (coin.yPos * coin.yPos).coerceIn(0f, 1f)
-                val curY = roadTopY + progress * (roadBottomY - roadTopY)
-                val curRoadW = topRoadW + progress * (bottomRoadW - topRoadW)
-                val laneOffsetFrac = when (coin.lane) {
-                    -1 -> -0.33f
-                    1 -> 0.33f
-                    else -> 0f
-                }
-                val curX = w / 2f + (curRoadW / 2f) * laneOffsetFrac
-                val coinRadius = (10f + progress * 24f)
-
-                // Golden Coin glow & body
-                drawCircle(
-                    color = Color(0xFFFEF08A),
-                    radius = coinRadius,
-                    center = Offset(curX, curY)
-                )
-                drawCircle(
-                    color = Color(0xFFF59E0B),
-                    radius = coinRadius * 0.8f,
-                    center = Offset(curX, curY)
-                )
-                drawCircle(
-                    color = Color(0xFFFDE047),
-                    radius = coinRadius * 0.6f,
-                    center = Offset(curX, curY)
-                )
-                // Star inside coin
-                drawCircle(
-                    color = Color(0xFFB45309),
-                    radius = coinRadius * 0.25f,
-                    center = Offset(curX, curY)
-                )
-            }
-        }
-
-        // ==========================================
-        // 2. INTERACTIVE RUNNER CHARACTER (BOY SPRITE)
-        // ==========================================
-        val playerLaneOffsetPx = (screenWidth.value * 0.28f) * animatedLaneX
-        val playerBaseY = screenHeight.value * 0.44f
-
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(
-                    x = playerLaneOffsetPx.dp,
-                    y = (playerBaseY + runBobbing + jumpAnim.value).dp
-                )
-                .size(130.dp, 160.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .offset { IntOffset(animatedTiltX.roundToInt(), 0) }
+                .scale(1.08f)
         ) {
-            // Character Shadow on Track
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .width((80 - jumpAnim.value * 0.4f).dp)
-                    .height(16.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.35f))
-            )
-
-            // Runner Character Image / Silhouette
-            Image(
-                painter = painterResource(
-                    id = if (isJumping) R.drawable.boy_jumping else R.drawable.runner_boy_sprite
-                ),
-                contentDescription = "Runner Character",
-                contentScale = ContentScale.Fit,
+            LoopingVideoBackground(
+                videoResId = R.raw.boy_collecting_coins_on_path,
+                isPlaying = !isPaused && !isLevelComplete && !isGameOver,
+                speed = videoSpeed,
                 modifier = Modifier.fillMaxSize()
             )
         }
 
+        // Ambient gradient overlay for HUD legibility
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.30f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.40f)
+                        )
+                    )
+                )
+        )
+
         // ==========================================
-        // 3. TOP HUD: LEVEL, SCORE, LIVES, PROGRESS & PAUSE
+        // 2. TOP HUD: LEVEL, SCORE, LIVES, PROGRESS & PAUSE
+        // (Matches tampilan-main.png exact header layout)
         // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp, start = 14.dp, end = 14.dp)
         ) {
-            // Top Pill Badges Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // LEVEL Badge (Matches tampilan-main.png)
+                // LEVEL Badge
                 Box(
                     modifier = Modifier
                         .shadow(6.dp, RoundedCornerShape(20.dp))
@@ -567,7 +344,7 @@ fun GameplayScreen(
                     }
                 }
 
-                // SCORE Badge with Trophy (Matches tampilan-main.png)
+                // SCORE Badge with Trophy
                 Box(
                     modifier = Modifier
                         .shadow(6.dp, RoundedCornerShape(20.dp))
@@ -599,7 +376,7 @@ fun GameplayScreen(
                     }
                 }
 
-                // Pause Button (Matches tampilan-main.png)
+                // Pause Button
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -631,7 +408,7 @@ fun GameplayScreen(
                     .fillMaxWidth()
                     .height(20.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF0C4A6E).copy(alpha = 0.8f))
+                    .background(Color(0xFF0C4A6E).copy(alpha = 0.85f))
                     .border(2.dp, Color(0xFF38BDF8), RoundedCornerShape(10.dp))
             ) {
                 // Progress Fill
@@ -674,7 +451,7 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 4. FLOATING FEEDBACK MESSAGE & COMBO
+        // 3. FLOATING FEEDBACK MESSAGE & PARTICLES
         // ==========================================
         feedbackMessage?.let { msg ->
             Box(
@@ -699,7 +476,7 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 5. BOTTOM SECTION: MATH QUESTION CARD & 4 ANSWER PILLS
+        // 4. BOTTOM SECTION: MATH QUESTION CARD & 4 ANSWER PILLS
         // (Matches tampilan-main.png exact layout)
         // ==========================================
         Column(
@@ -709,9 +486,9 @@ fun GameplayScreen(
                 .padding(horizontal = 16.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Swipe instruction hint
+            // Hint for finger gestures
             Text(
-                text = "👉 Geser jari ke Kiri/Tengah/Kanan untuk menggerakkan pelari 👈",
+                text = "👉 Usap layar untuk menggerakkan dan jawab soal di bawah 👈",
                 color = Color.White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -725,7 +502,7 @@ fun GameplayScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp)
+                    .height(86.dp)
                     .shadow(12.dp, RoundedCornerShape(24.dp))
                     .clip(RoundedCornerShape(24.dp))
                     .background(
@@ -759,7 +536,7 @@ fun GameplayScreen(
                         .padding(end = 10.dp, bottom = 6.dp)
                 )
 
-                // The prominent equation: 7 × 6 = ?
+                // The prominent equation: e.g. 7 × 6 = ?
                 Text(
                     text = currentQuestion.equation,
                     color = Color(0xFF0F172A),
@@ -816,7 +593,7 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 6. PAUSED MODAL (Matches paused.png)
+        // 5. PAUSED MODAL (Matches paused.png)
         // ==========================================
         if (isPaused) {
             Box(
@@ -871,12 +648,10 @@ fun GameplayScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            // Level info
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("LEVEL", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                                 Text("$levelNumber", fontSize = 24.sp, color = Color(0xFF0284C7), fontWeight = FontWeight.Black)
                             }
-                            // Score info
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("SCORE", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                                 Text(String.format("%,d", score), fontSize = 24.sp, color = Color(0xFFD97706), fontWeight = FontWeight.Black)
@@ -905,7 +680,7 @@ fun GameplayScreen(
                                 questionsAnswered = 0
                                 selectedOptionIndex = null
                                 isQuestionCorrect = null
-                                currentQuestion = createRunnerQuestion()
+                                currentQuestion = generateVideoRunnerQuestion()
                                 isPaused = false
                             }
                         )
@@ -924,7 +699,7 @@ fun GameplayScreen(
         }
 
         // ==========================================
-        // 7. LEVEL COMPLETE MODAL (Matches setelah-main.png)
+        // 6. LEVEL COMPLETE MODAL (Matches setelah-main.png)
         // ==========================================
         if (isLevelComplete) {
             Box(
@@ -949,7 +724,7 @@ fun GameplayScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Level Complete Header with celebration banner
+                        // Level Complete Header Banner
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1017,7 +792,7 @@ fun GameplayScreen(
                                     selectedOptionIndex = null
                                     isQuestionCorrect = null
                                     isLevelComplete = false
-                                    currentQuestion = createRunnerQuestion()
+                                    currentQuestion = generateVideoRunnerQuestion()
                                 }
                             )
 
@@ -1038,7 +813,7 @@ fun GameplayScreen(
                                             selectedOptionIndex = null
                                             isQuestionCorrect = null
                                             isLevelComplete = false
-                                            currentQuestion = createRunnerQuestion()
+                                            currentQuestion = generateVideoRunnerQuestion()
                                         }
                                     )
                                 }
