@@ -21,7 +21,6 @@ enum AnimState {
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var shadow: Sprite2D = $Shadow
 @onready var fx_label: Label = $FxLabel
-@onready var anim_player: AnimationPlayer = $AnimationPlayer
 
 var current_lane: int = 0 # -1 = Left, 0 = Center, 1 = Right
 var current_anim_state: AnimState = AnimState.RUN

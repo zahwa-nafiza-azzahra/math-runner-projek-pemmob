@@ -8,6 +8,9 @@ signal answer_evaluated(is_correct: bool, chosen_index: int, correct_index: int)
 
 var current_question: Dictionary = {}
 
+func _ready() -> void:
+	generate_question()
+
 func generate_question() -> Dictionary:
 	var config = LevelManager.get_level_config()
 	var operations: Array = config.get("operations", ["+"])
